@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Traffic</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="bar">
+    <span id="live" class="live" title="connection to the proxy"><i></i><b>connecting</b></span>
+    <label class="ctl">session <select id="f-session"><option value="">all</option></select></label>
+    <label class="ctl">lane <select id="f-lane"><option value="">all</option></select></label>
+    <label class="ctl">model <select id="f-model"><option value="">all</option></select></label>
+    <details class="menu" id="m-kinds">
+      <summary>kinds <span class="count" id="kinds-count"></span></summary>
+      <div class="pop" id="kinds-pop"><p class="hint">Show or hide each kind in the detail view.</p></div>
+    </details>
+    <details class="menu" id="m-tools">
+      <summary>tool <span class="count" id="tools-count"></span></summary>
+      <div class="pop" id="tools-pop"><p class="hint">Only exchanges that call, or return results for, these tools.</p><div id="tools-list"></div></div>
+    </details>
+    <label class="toggle"><input type="checkbox" id="f-errors"> errors only</label>
+    <label class="toggle" title="count_tokens, HEAD, GET and non-Messages traffic"><input type="checkbox" id="f-other"> other traffic</label>
+    <span class="search">
+      <input type="search" id="f-q" placeholder="search…" autocomplete="off" spellcheck="false">
+      <label class="toggle small" title="also search the system prompt and tool definitions"><input type="checkbox" id="f-scope"> +system/tools</label>
+    </span>
+    <span class="spacer"></span>
+    <button id="b-stats" class="btn" aria-expanded="false">Stats ▾</button>
+    <button id="b-pause" class="btn" title="pause live updates">pause ‖</button>
+  </div>
+  <div class="totals" id="totals">no traffic yet</div>
+</header>
+
+<section id="stats" hidden></section>
+
+<main id="main">
+  <aside id="list-pane">
+    <button id="newpill" class="newpill" hidden>0 new ↑</button>
+    <div id="list" role="listbox" aria-label="exchanges"></div>
+    <div id="list-empty" class="empty">Waiting for traffic…<br><small>Point the agent at the proxy:<br><code id="hint-cmd">ANTHROPIC_BASE_URL=http://localhost:8041 claude</code></small></div>
+  </aside>
+  <section id="detail" aria-live="polite">
+    <div class="empty">Select an exchange on the left.</div>
+  </section>
+</main>
+<div id="tip" class="tip" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>
