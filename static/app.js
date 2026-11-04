@@ -20,6 +20,8 @@ STRINGS.he = {
   tabs: { overview: 'סקירה', request: 'בקשה', reply: 'תשובה', composition: 'הרכב', changes: 'שינויים', raw: 'גולמי' },
   comp: {
     notCalibrated: 'עדיין לא כויל: התשובה טרם הסתיימה, ולכן גם הסכום הוא הערכה.',
+    noUsage: 'ה־API לא דיווח על שימוש בטוקנים (הבקשה נכשלה), לכן כל המספרים כאן הם הערכה בלבד.',
+    oldServer: 'השרת לא שלח נתוני הרכב. כנראה שהפרוקסי הופעל לפני שהתכונה נוספה: עצרו אותו (Ctrl+C) והפעילו מחדש את python3 proxy.py.',
     totalExact: 'סך הקלט', exactNote: 'מדויק, כפי שדווח מה־API', estNote: 'הערכה',
     note: 'מספר הטוקנים של כל חלק הוא הערכה (≈) שכוילה כך שהסכום שווה בדיוק לסך שדווח. לחיצה על חלק מעבירה לבלוק שלו בלשונית "בקשה".',
     bySource: 'לפי מקור', allSegs: 'כל החלקים',
@@ -191,6 +193,8 @@ STRINGS.en = {
   tabs: { overview: 'Overview', request: 'Request', reply: 'Reply', composition: 'Composition', changes: 'Changes', raw: 'Raw' },
   comp: {
     notCalibrated: 'Not calibrated yet: the reply has not finished, so the total is an estimate too.',
+    noUsage: 'The API reported no token usage (the request failed), so every number here is an estimate only.',
+    oldServer: 'The server sent no composition data. The proxy was probably started before this feature was added: stop it (Ctrl+C) and run python3 proxy.py again.',
     totalExact: 'Input total', exactNote: 'exact, as reported by the API', estNote: 'estimate',
     note: 'Each part\'s token count is an estimate (≈), calibrated so they add up exactly to the reported total. Click a part to jump to its block in the Request tab.',
     bySource: 'by source', allSegs: 'all parts',
@@ -1447,9 +1451,14 @@ function jumpTo(ref) {
 
 function renderComposition(body, d, ctx) {
   const c = ctx.comp;
-  if (!c) { body.append(h('div', { class: 'note' }, d.request.parsed ? T.comp.noComp : T.notParsedOther)); return; }
+  if (!c) {
+    if (d.request.parsed && !('composition' in d)) body.append(h('div', { class: 'banner warn' }, h('b', null, icon('error'), T.comp.noComp), h('span', null, T.comp.oldServer)));
+    else body.append(h('div', { class: 'note' }, d.request.parsed ? T.comp.noComp : T.notParsedOther));
+    return;
+  }
   const u = ctx.summary.usage;
-  if (!c.exact) body.append(h('div', { class: 'banner info' }, h('b', null, icon('clock'), T.comp.estNote), h('span', null, T.comp.notCalibrated)));
+  const finished = ctx.summary.finished_at != null;
+  if (!c.exact) body.append(h('div', { class: 'banner info' }, h('b', null, icon('clock'), T.comp.estNote), h('span', null, finished ? T.comp.noUsage : T.comp.notCalibrated)));
   const groups = new Map();
   for (const sg of c.segs) {
     const g = groups.get(sg.source) || { source: sg.source, tokens: 0, segs: [] };
