@@ -35,6 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
 import dashboard
+from composition import Sources
 from traffic import Exchange, Prices, Recorder, Store, redact
 
 # Headers that describe one hop of the connection, not the message. They are
@@ -218,12 +219,14 @@ def main() -> None:
     parser.add_argument("--replay", action="append", default=[], metavar="FILE",
                         help="load a JSONL log into the dashboard (repeatable)")
     parser.add_argument("--prices", default=os.path.join(HERE, "prices.json"), help="price table (JSON)")
+    parser.add_argument("--sources", default=os.path.join(HERE, "sources.json"),
+                        help="prompt-source detection rules (JSON)")
     args = parser.parse_args()
     UPSTREAM = args.upstream.rstrip("/")
     VERBOSE = args.verbose
 
     if not args.no_dashboard:
-        store = Store(Prices(args.prices), None if args.no_log else args.log_dir)
+        store = Store(Prices(args.prices), None if args.no_log else args.log_dir, Sources(args.sources))
         for path in args.replay:
             n = store.replay(path)
             print(f"replayed {n} exchanges from {path}")

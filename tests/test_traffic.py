@@ -270,6 +270,110 @@ class StoreTests(unittest.TestCase):
 
 # ---------------------------------------------------------------------------- end to end
 
+class CompositionTests(unittest.TestCase):
+    """SPEC 6.10 / check 11: every request is split into source-labelled segments with token counts."""
+
+    REMINDER = ("<system-reminder>\nAs you answer the user's questions, you can use the following context:\n"
+                "# claudeMd\nCodebase and user instructions are shown below.\n\n"
+                "Contents of /home/u/proj/CLAUDE.md (project instructions):\n\n# Project rules\nUse tabs.\n\n"
+                "Contents of /home/u/.claude/memory/MEMORY.md (memory):\n\n- likes tests\n"
+                "# gitStatus\nCurrent branch: main\n</system-reminder>\n")
+    HOOK = "<system-reminder>\nSessionStart hook additional context: # Describing commands\nAlways describe.\n</system-reminder>"
+
+    def setUp(self):
+        self.store = Store(Prices(os.path.join(ROOT, "prices.json")), None)
+
+    def body(self, messages):
+        return {"model": "claude-sonnet-4-5", "max_tokens": 100, "stream": True,
+                "system": [{"type": "text", "text": "You are Claude Code.\n# Memory\nSave facts.\n# Tone\nBe brief."}],
+                "tools": [{"name": "Bash", "description": "run", "input_schema": {}},
+                          {"name": "mcp__github__create_issue", "description": "issue", "input_schema": {}}],
+                "messages": messages}
+
+    def first(self):
+        msgs = [{"role": "user", "content": [
+            {"type": "text", "text": self.REMINDER}, {"type": "text", "text": self.HOOK},
+            {"type": "text", "text": "Fix the failing test"}, {"type": "mystery_block", "payload": "x" * 40}]}]
+        return msgs, run_exchange(self.store, self.body(msgs), fixture("text_only.sse"))
+
+    def by_ref(self, segs):
+        out = {}
+        for sg in segs:
+            out.setdefault(sg["ref"], []).append(sg)
+        return out
+
+    def test_sums_exactly_to_reported_input(self):
+        _, ex = self.first()
+        segs, exact, total = ex.composition(self.store)
+        self.assertTrue(exact)
+        self.assertEqual(total, 12 + 2000 + 100)  # input + cache read + cache write from the fixture
+        self.assertEqual(sum(sg["tokens"] for sg in segs), total)
+        self.assertEqual(sum(ex.summary(self.store)["composition"].values()), total)
+
+    def test_every_character_belongs_to_one_segment(self):
+        msgs, ex = self.first()
+        segs = ex.composition(self.store)[0]
+        texts = {"s:0": self.body(msgs)["system"][0]["text"]}
+        for j, b in enumerate(msgs[0]["content"]):
+            if b["type"] == "text":
+                texts[f"m:0:{j}"] = b["text"]
+        refs = self.by_ref(segs)
+        for ref, text in texts.items():
+            parts = refs[ref]
+            if len(parts) == 1:
+                self.assertEqual(parts[0]["chars"], len(text), ref)
+                continue
+            self.assertEqual(parts[0]["start"], 0, ref)
+            self.assertEqual(parts[-1]["end"], len(text), ref)
+            for x, y in zip(parts, parts[1:]):
+                self.assertEqual(x["end"], y["start"], ref)  # contiguous, no gaps, no overlaps
+
+    def test_sources_are_labelled(self):
+        msgs, ex = self.first()
+        segs = ex.composition(self.store)[0]
+        refs = self.by_ref(segs)
+        label = lambda ref: [(sg["source"], sg["detail"]) for sg in refs[ref]]  # noqa: E731
+        self.assertEqual(label("t:0"), [("tools_builtin", "Bash")])
+        self.assertEqual(label("t:1"), [("tools_mcp", "github")])
+        self.assertEqual([x[0] for x in label("s:0")], ["system_prompt", "memory", "system_prompt"])
+        reminder = label("m:0:0")
+        self.assertEqual([x[0] for x in reminder], ["system_reminder", "claude_md", "claude_md", "memory", "environment"])
+        self.assertIn(("claude_md", "/home/u/proj/CLAUDE.md"), reminder)  # file path kept; its own '# heading' stays inside
+        self.assertIn(("memory", "/home/u/.claude/memory/MEMORY.md"), reminder)
+        self.assertEqual([x[0] for x in label("m:0:1")], ["system_reminder", "hooks"])
+        self.assertEqual(label("m:0:2"), [("user_prompt", None)])
+        self.assertEqual(label("m:0:3"), [("other", "mystery_block")])  # unknown content lands in Other
+
+    def test_history_tool_results_and_changes(self):
+        msgs, ex1 = self.first()
+        tool_ex = run_exchange(self.store, self.body(msgs + [{"role": "assistant", "content": "ok"},
+                                                             {"role": "user", "content": "now list"}]),
+                               fixture("tool_use.sse"))
+        reply = list(tool_ex.parser.content)
+        m3 = msgs + [{"role": "assistant", "content": "ok"}, {"role": "user", "content": "now list"},
+                     {"role": "assistant", "content": reply},
+                     {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_A", "content": "a\nb"},
+                                                  {"type": "tool_result", "tool_use_id": "toolu_B", "content": "c"}]}]
+        ex3 = run_exchange(self.store, self.body(m3), fixture("text_only.sse"))
+        refs = self.by_ref(ex3.composition(self.store)[0])
+        self.assertEqual(refs["m:0:2"][0]["source"], "history")  # the old typed prompt is history now
+        self.assertEqual(refs["m:4:0"][0]["source"], "tool_results")
+        self.assertEqual(refs["m:4:0"][0]["detail"], "Bash")
+        self.assertEqual(refs["m:4:1"][0]["detail"], "Read")
+        changes = self.store.detail(ex3.id)["changes"]["composition"]
+        deltas = {x["source"]: x["after"] - x["before"] for x in changes}
+        self.assertIn("tool_results", deltas)
+        detail = self.store.detail(ex3.id)["composition"]
+        self.assertEqual(sum(sg["tokens"] for sg in detail["segments"]), detail["total"])
+
+    def test_pending_request_is_an_estimate(self):
+        ex = self.store.begin("POST", "/v1/messages", [], json.dumps(self.body([{"role": "user", "content": "hi"}])).encode(),
+                              time.time())
+        segs, exact, _ = ex.composition(self.store)
+        self.assertFalse(exact)
+        self.assertTrue(all(sg["cache"] is None for sg in segs))
+
+
 class FakeUpstream(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     seen: list = []

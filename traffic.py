@@ -21,6 +21,9 @@ import time
 from datetime import datetime
 from typing import Any, Callable
 
+import composition
+from composition import Sources
+
 SECRET_HEADERS = {"authorization", "x-api-key", "proxy-authorization", "cookie", "set-cookie"}
 UPDATE_INTERVAL = 0.1  # exchange.updated throttle: about 10 per second
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -362,6 +365,9 @@ class Exchange:
         self.tool_results: list[dict] = []  # results sent in this request
         self.cost = 0.0
         self.cost_source = ""
+        self._comp_raw: list[dict] | None = None  # prompt-composition segments (SPEC 6.10), cached
+        self._comp_key: Any = None
+        self._comp_cal: tuple | None = None
 
         path_only = path.split("?", 1)[0]
         if "count_tokens" in path_only:
@@ -492,6 +498,25 @@ class Exchange:
             return {"kind": "other", "text": f"no new messages (same conversation as #{self.prev_id})"}
         return {"kind": "other", "text": ""}
 
+    # -- prompt composition (SPEC 6.10)
+    def composition(self, store: "Store") -> tuple[list[dict], bool, int]:
+        """Calibrated segments, whether they are exact, and the input total. Cached per request and usage."""
+        if self.kind != "messages" or self.body_obj is None:
+            return [], False, 0
+        store.sources.load()
+        key = (store.sources.version, self.new_from, self.echo_index)
+        if self._comp_raw is None or self._comp_key != key:
+            def tool_name(tid: str | None) -> str:
+                entry = store.tool_index.get(tid) or {}
+                return entry.get("name") or "?"
+            self._comp_raw = composition.segment(self.req, self.new_from, self.echo_index, tool_name, store.sources)
+            self._comp_key, self._comp_cal = key, None
+        usage = self.usage() if self.finished_at is not None else None
+        ukey = (key, tuple(sorted(usage.items())) if usage else None)
+        if self._comp_cal is None or self._comp_cal[0] != ukey:
+            self._comp_cal = (ukey, composition.calibrate(self._comp_raw, usage))
+        return self._comp_cal[1]
+
     def summary(self, store: "Store") -> dict:
         calls = []
         for c in self.tool_calls():
@@ -528,7 +553,14 @@ class Exchange:
             "prev_id": self.prev_id,
             "msg_count": len(self.messages),
             "new_count": len(self.messages) - self.new_from,
+            **self._composition_summary(store),
         }
+
+    def _composition_summary(self, store: "Store") -> dict:
+        segs, exact, total = self.composition(store)
+        if not segs:
+            return {"composition": None}
+        return {"composition": composition.totals(segs), "composition_exact": exact, "composition_total": total}
 
 
 # --------------------------------------------------------------------------- store
@@ -543,8 +575,9 @@ class Lane:
 class Store:
     """All exchanges, in memory. Mutated only by the recorder's worker thread."""
 
-    def __init__(self, prices: Prices | None = None, log_dir: str | None = None):
+    def __init__(self, prices: Prices | None = None, log_dir: str | None = None, sources: Sources | None = None):
         self.lock = threading.RLock()
+        self.sources = sources or Sources()
         self.exchanges: dict[int, Exchange] = {}
         self.order: list[int] = []
         self.next_id = 1
@@ -878,6 +911,8 @@ class Store:
             data["paired_results"] = paired_results
             data["paired_calls"] = paired_calls
             data["changes"] = self.changes(ex)
+            segs, exact, total = ex.composition(self)
+            data["composition"] = {"segments": segs, "exact": exact, "total": total}
             return data
 
     def raw(self, ex_id: int) -> dict | None:
@@ -928,6 +963,19 @@ class Store:
             if before != after:
                 params.append({"name": key, "before": before, "after": after})
         out["params"] = params
+
+        # Per-source token deltas (SPEC 6.10). "changed" is judged on the unscaled estimates, so
+        # calibration rounding never makes an identical source look changed.
+        pseg, eseg = prev.composition(self)[0], ex.composition(self)[0]
+        before, after = composition.totals(pseg), composition.totals(eseg)
+        est_b, est_a = {}, {}
+        for sg in pseg:
+            est_b[sg["source"]] = est_b.get(sg["source"], 0) + sg["est"]
+        for sg in eseg:
+            est_a[sg["source"]] = est_a.get(sg["source"], 0) + sg["est"]
+        out["composition"] = [{"source": k, "before": before.get(k, 0), "after": after.get(k, 0),
+                               "changed": abs(est_a.get(k, 0) - est_b.get(k, 0)) >= 0.5}
+                              for k in dict.fromkeys(list(after) + list(before))]
 
         if ex.relation == "append":
             out["messages"] = {"mode": "append", "kept": ex.common_prefix,

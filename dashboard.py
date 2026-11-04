@@ -8,7 +8,7 @@ Runs inside proxy.py on its own port (D1), bound to 127.0.0.1 only.
     GET /api/exchanges/{id}       full record
     GET /api/exchanges/{id}/raw   redacted request JSON and raw reply text
     GET /api/search?q=..&scope=   ids of matching exchanges (scope=all adds system + tools)
-    GET /api/info                 upstream, start time, price table
+    GET /api/info                 upstream, start time, price table, prompt-source labels
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def make_handler(store: Store, info: dict) -> type[BaseHTTPRequestHandler]:
                 if path == "/events":
                     return self.events()
                 if path == "/api/info":
-                    return self.send_json({**info, "prices": store.prices.table})
+                    return self.send_json({**info, "prices": store.prices.table, **store.sources.public()})
                 if path == "/api/exchanges":
                     return self.send_json(store.summaries())
                 if path == "/api/search":

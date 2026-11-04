@@ -1,49 +1,109 @@
 <!doctype html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Traffic</title>
+<title>תעבורת סוכנים</title>
+<script>
+  /* Apply the remembered theme and language before first paint, to avoid a flash. */
+  try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+  try {
+    const m = /(?:^#|&)lang=(he|en)\b/.exec(location.hash); let l = m ? m[1] : null;
+    if (!l) { const st = localStorage.getItem('lang'); if (st === 'he' || st === 'en') l = st; }
+    if (l === 'en') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
+  } catch (_) {}
+</script>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<!-- One consistent line-icon set (SPEC 6.9). Inline, no CDN (D2). -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="i-system" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol>
+    <symbol id="i-tools" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-assistant" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+    <symbol id="i-tool_call" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.5-.5-2.4z"/></symbol>
+    <symbol id="i-tool_result" viewBox="0 0 24 24"><path d="M9 14l-5-5 5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-thinking" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-error" viewBox="0 0 24 24"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-other" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l12 8-12 8z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-memory" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-skill" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-hook" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+    <symbol id="i-env" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 9l3 3-3 3M12 15h5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+  </defs>
+</svg>
+
 <header id="top">
   <div class="bar">
-    <span id="live" class="live" title="connection to the proxy"><i></i><b>connecting</b></span>
-    <label class="ctl">session <select id="f-session"><option value="">all</option></select></label>
-    <label class="ctl">lane <select id="f-lane"><option value="">all</option></select></label>
-    <label class="ctl">model <select id="f-model"><option value="">all</option></select></label>
+    <span id="live" class="live" data-i18n-title="liveTitle" title="חיבור לפרוקסי"><i></i><b data-i18n="connecting">מתחבר…</b></span>
+    <span class="brand" data-i18n="brand">תעבורת סוכנים</span>
+    <span class="sep"></span>
+    <label class="ctl"><span data-i18n="session">סשן</span> <select id="f-session"><option value="">הכול</option></select></label>
+    <label class="ctl"><span data-i18n="lane">מסלול</span> <select id="f-lane"><option value="">הכול</option></select></label>
+    <label class="ctl"><span data-i18n="model">מודל</span> <select id="f-model"><option value="">הכול</option></select></label>
     <details class="menu" id="m-kinds">
-      <summary>kinds <span class="count" id="kinds-count"></span></summary>
-      <div class="pop" id="kinds-pop"><p class="hint">Show or hide each kind in the detail view.</p></div>
+      <summary><span data-i18n="kindsMenu">סוגים</span> <span class="count" id="kinds-count"></span></summary>
+      <div class="pop" id="kinds-pop"><p class="hint" data-i18n="kindsHint">הצגה או הסתרה של כל סוג בתצוגת הפרטים.</p></div>
     </details>
     <details class="menu" id="m-tools">
-      <summary>tool <span class="count" id="tools-count"></span></summary>
-      <div class="pop" id="tools-pop"><p class="hint">Only exchanges that call, or return results for, these tools.</p><div id="tools-list"></div></div>
+      <summary><span data-i18n="toolMenu">כלי</span> <span class="count" id="tools-count"></span></summary>
+      <div class="pop" id="tools-pop"><p class="hint" data-i18n="toolsHint">רק בקשות שקוראות לכלים האלה או מחזירות את תוצאותיהם.</p><div id="tools-list"></div></div>
     </details>
-    <label class="toggle"><input type="checkbox" id="f-errors"> errors only</label>
-    <label class="toggle" title="count_tokens, HEAD, GET and non-Messages traffic"><input type="checkbox" id="f-other"> other traffic</label>
+    <label class="toggle"><input type="checkbox" id="f-errors"> <span data-i18n="errorsOnly">שגיאות בלבד</span></label>
+    <label class="toggle" data-i18n-title="cbarTitle" title="פס צבעוני בכל שורה: מאילו מקורות הורכב הפרומפט"><input type="checkbox" id="f-cbar"> <span data-i18n="cbar">פס הרכב</span></label>
+    <label class="toggle" data-i18n-title="otherTitle" title="count_tokens,‏ HEAD,‏ GET ותעבורה שאינה Messages"><input type="checkbox" id="f-other"> <span data-i18n="otherTraffic">תעבורה אחרת</span></label>
     <span class="search">
-      <input type="search" id="f-q" placeholder="search…" autocomplete="off" spellcheck="false">
-      <label class="toggle small" title="also search the system prompt and tool definitions"><input type="checkbox" id="f-scope"> +system/tools</label>
+      <span class="sbox"><svg class="ic"><use href="#i-search"/></svg><input type="search" id="f-q" data-i18n-placeholder="searchPh" placeholder="חיפוש…" autocomplete="off" spellcheck="false"></span>
+      <label class="toggle small" data-i18n-title="scopeTitle" title="חיפוש גם בהנחיות המערכת ובהגדרות הכלים"><input type="checkbox" id="f-scope"> <span data-i18n="scopeLabel">כולל מערכת/כלים</span></label>
     </span>
     <span class="spacer"></span>
-    <button id="b-stats" class="btn" aria-expanded="false">Stats ▾</button>
-    <button id="b-pause" class="btn" title="pause live updates">pause ‖</button>
+    <button id="b-stats" class="btn" aria-expanded="false"></button>
+    <button id="b-pause" class="btn" title="השהיית עדכונים חיים"></button>
+    <button id="b-lang" class="btn lang" data-i18n-title="langTitle" title="Switch to English"><span lang="he">עב</span><span class="slash">/</span><span lang="en">EN</span></button>
+    <button id="b-theme" class="btn icon" title="ערכת נושא"></button>
   </div>
-  <div class="totals" id="totals">no traffic yet</div>
+  <div class="totals" id="totals" data-i18n="noTraffic">אין עדיין תעבורה</div>
 </header>
 
 <section id="stats" hidden></section>
 
 <main id="main">
-  <aside id="list-pane">
-    <button id="newpill" class="newpill" hidden>0 new ↑</button>
-    <div id="list" role="listbox" aria-label="exchanges"></div>
-    <div id="list-empty" class="empty">Waiting for traffic…<br><small>Point the agent at the proxy:<br><code id="hint-cmd">ANTHROPIC_BASE_URL=http://localhost:8041 claude</code></small></div>
+  <aside id="list-pane" class="pane">
+    <button id="newpill" class="newpill" hidden></button>
+    <div id="list" role="listbox" data-i18n-aria="listLabel" aria-label="בקשות"></div>
+    <div id="list-empty" class="empty">
+      <svg class="ic big"><use href="#i-inbox"/></svg>
+      <div data-i18n="waiting">ממתין לתעבורה…</div>
+      <small data-i18n="pointAgent">הפנו את הסוכן אל הפרוקסי:</small>
+      <code id="hint-cmd" dir="ltr">ANTHROPIC_BASE_URL=http://localhost:8041 claude</code>
+    </div>
   </aside>
-  <section id="detail" aria-live="polite">
-    <div class="empty">Select an exchange on the left.</div>
+  <div id="resizer" role="separator" aria-orientation="vertical" data-i18n-aria="resizerLabel" aria-label="שינוי רוחב החלוניות" tabindex="0"></div>
+  <section id="detail" class="pane" aria-live="polite">
+    <div class="empty"><svg class="ic big toward-list"><use href="#i-chev"/></svg><div data-i18n="selectHint">בחרו בקשה מהרשימה.</div></div>
   </section>
 </main>
 <div id="tip" class="tip" hidden></div>

@@ -1,0 +1,34 @@
+{
+  "_comment": "Prompt-composition rules (SPEC 6.10). Sources are listed in display order. Markers are regexes matched at the start of a line inside text blocks; the first match wins. 'until' says where a marked section ends: 'heading' = the next top-level '# ' heading or marker, 'marker' = the next marker or the end of the enclosing region (a system reminder or the whole block). Edits are picked up without a restart.",
+  "chars_per_token": 4,
+  "image_fallback_tokens": 1600,
+  "document_page_tokens": 1500,
+  "sources": [
+    {"id": "system_prompt",   "label": {"he": "הנחיות מערכת",      "en": "System prompt"}},
+    {"id": "tools_builtin",   "label": {"he": "כלים מובנים",       "en": "Built-in tools"}},
+    {"id": "tools_mcp",       "label": {"he": "כלי MCP",           "en": "MCP tools"}},
+    {"id": "claude_md",       "label": {"he": "CLAUDE.md",         "en": "CLAUDE.md"}},
+    {"id": "memory",          "label": {"he": "זיכרון",            "en": "Memory"}},
+    {"id": "skills",          "label": {"he": "סקילים",            "en": "Skills"}},
+    {"id": "hooks",           "label": {"he": "הוקים",             "en": "Hooks"}},
+    {"id": "environment",     "label": {"he": "סביבה",             "en": "Environment"}},
+    {"id": "system_reminder", "label": {"he": "תזכורות מערכת",     "en": "System reminders"}},
+    {"id": "user_prompt",     "label": {"he": "הנחיית המשתמש",     "en": "User prompt"}},
+    {"id": "history",         "label": {"he": "היסטוריית שיחה",    "en": "History"}},
+    {"id": "tool_results",    "label": {"he": "תוצאות כלים",       "en": "Tool results"}},
+    {"id": "media",           "label": {"he": "תמונות ומסמכים",    "en": "Images & documents"}},
+    {"id": "other",           "label": {"he": "אחר",               "en": "Other"}}
+  ],
+  "markers": [
+    {"source": "claude_md",     "pattern": "^Contents of (?P<detail>\\S*?(?:CLAUDE(?:\\.local)?\\.md))\\b", "until": "marker"},
+    {"source": "memory",        "pattern": "^Contents of (?P<detail>\\S*?MEMORY\\.md)\\b",                  "until": "marker"},
+    {"source": "claude_md",     "pattern": "^# claudeMd\\b",                                                "until": "marker"},
+    {"source": "memory",        "pattern": "^# (?:auto )?[Mm]emory\\b",                                     "until": "heading"},
+    {"source": "skills",        "pattern": "^The following skills are available",                            "until": "heading"},
+    {"source": "tools_mcp",     "pattern": "^# MCP Server Instructions\\b", "detail": "server instructions", "until": "heading"},
+    {"source": "tools_builtin", "pattern": "^The following deferred tools are now available", "detail": "deferred tool list", "until": "heading"},
+    {"source": "hooks",         "pattern": "^(?P<detail>\\w+ hook)\\b.{0,60}?(?:additional context|output|feedback|success|blocking|error)", "until": "marker"},
+    {"source": "environment",   "pattern": "^# (?P<detail>Environment|gitStatus|currentDate|userEmail)\\b",  "until": "heading"},
+    {"source": "environment",   "pattern": "^(?P<detail>gitStatus):",                                       "until": "heading"}
+  ]
+}

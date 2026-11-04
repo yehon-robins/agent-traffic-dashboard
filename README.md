@@ -18,6 +18,7 @@ ANTHROPIC_BASE_URL=http://localhost:8041 claude    # in another terminal
 | `--replay FILE` | Load a JSONL log into the dashboard. Can be repeated (D3). |
 | `--no-log` / `--log-dir DIR` | Turn off the log, or move it from `traffic/<date>.jsonl` (D10). |
 | `--prices FILE` | Price table used for the estimated cost (D5). Defaults to `prices.json`. |
+| `--sources FILE` | Rules that label each part of a prompt with its source (SPEC 6.10). Defaults to `sources.json`. |
 | `--no-dashboard` | Plain proxy with no capture. |
 
 ## Files
@@ -29,6 +30,7 @@ ANTHROPIC_BASE_URL=http://localhost:8041 claude    # in another terminal
 - `dashboard.py`: the dashboard HTTP server: static files, `/api/...`, and `/events` (SSE).
 - `static/`: `index.html`, `app.js`, `style.css` (vanilla JS/CSS).
 - `prices.json`: an editable price table. Every cost shown is labelled "est."
+- `sources.json`: editable rules that label each part of a prompt with its source (CLAUDE.md, memory, tools, reminders, and so on). Token counts per source are estimates, calibrated to the input total the API reported.
 - `tests/`: parser fixture tests, store tests, and end-to-end tests that run a
   fake upstream through the real proxy.
 
